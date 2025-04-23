@@ -1,19 +1,17 @@
 (ns hello.cannibal-kitchen
   (:require
    [charred.api :as charred]
+   [datascript.core :as d]
    [dev.onionpancakes.chassis.compiler :as hc]
    [dev.onionpancakes.chassis.core :as h]
    [garden.core :as g]
-   [garden.stylesheet :as gstyles]
    [mount.core :as mount]
-   [reitit.ring.middleware.parameters :as rmparams]
    [org.httpkit.server :as http.server]
    [reitit.ring :as rr]
    [ring.util.response :as ruresp]
    [starfederation.datastar.clojure.adapter.http-kit :as d*.httpkit]
    [starfederation.datastar.clojure.api :as d*]
    [taoensso.telemere :as t]
-   [datascript.core :as d]
    ))
 
 (def config

@@ -6,7 +6,7 @@ Datastar claims this architecture will enable us to write less code and have fas
 
 I mainly build business CRUD apps, so I'm less interested in super-fast renders and more interested in UIs with lots of elements for controlling lots of different things. Can I make those types of UIs?
 
-The remaining sections of this document will describe the experiments I'm doing to test out Datastar. I used Clojure for my backend, but Datastar has lots of backend SDKs, which mainly just handle sending the server-sent events Datastar's backend action plugins expect.
+The remaining sections of this document will describe the experiments I'm doing to test out Datastar, answer some questions I had, and share my general thoughts on this thing. I used Clojure for my backend, but Datastar has lots of backend SDKs, which mainly just handle sending the server-sent events Datastar's backend action plugins expect.
 
 # Examples
 
@@ -29,7 +29,7 @@ We could just clone that but then I wouldn't learn much.
 
 My code is at ./examples/src/main/hello/world1.clj
 
-Some notes about the hello world in datastar's repo:
+A note about the hello world in datastar's repo:
 - it would probably be better to use local roots for the sdk and adapter only under a particular alias, because I can't just copy and paste the current deps.edn into a new project without changing those dependencies.
 
 The datastar hello world uses the datastar ring adapter to send SSEs to the client to spell out a message over an interval, with a configurable duration between characters.
@@ -44,13 +44,13 @@ We're only using 4 things from the datastar sdk:
 
 I have typed "see" instead of "sse" 1 million times so far. That might be the most damning quality of datastar.
 
-`->sse-request` handles making a ring response that allows use to use the same connnection to send server-sent events. This basically turns the 1:1 correspondence between requests and responses to a 1:many, where many includes 0.
+`->sse-request` handles making a ring response that allows us to use the same connnection to send server-sent events. This basically turns the 1:1 correspondence between requests and responses to a 1:many, where many includes 0.
 
 I believe the :write-profile option of `->sse-response` is where I'd look to add compression to the response stream.
 
 `with-open-sse` is just `with-open` for a SSE event stream. The adapter code calls this `sse-gen`, because it's an object that _gen_erates SSE events.
 
-Finally, `merge-fragment!` is the cool and interesting bit. This is how we send chunks of HTML to he browser for datastar to merge into the DOM. This function basically just formats the message in the way datastar expects (ultimately we're just dealing with text) and sends it down.
+Finally, `merge-fragment!` is how we send chunks of HTML to he browser for datastar to merge into the DOM. This function basically just formats the message in the way datastar expects (ultimately we're just dealing with text) and sends it down.
 
 If you look in the network tab of your dev tools you'll see "datastar-merge-fragment" events coming down and the data associated with each is HTML sent through `merge-fragment!`.
 
@@ -100,13 +100,13 @@ Fix the ID collision and the demo works as expected.
 
 I was curious if changing the request method for the request that sets up the SSEs for loading the message characters would change anything. I made it a POST. It sent a POST request and everything worked the same.
 
+This demo was my first hint that signals might proliferate a bit more than the userbase lets on; the advice is to use no more than a handful of signals per page, but here we're using a signal per field of our form. Any complicated page using the same approach will therefore use dozens or hundreds of signals.
+
 ## Internal Element State
 
 Datastar allows us to use the semantics of replacing the entire DOM but retain the internal state of specific DOM elements.
 
 Let's say we have a page with 4 spinning elements and a "reorder" button. When we reorder, we get the entire page back from the server w/ the elements in a new order. Is animation position lost?
-
-What role do element IDs play in this?
 
 This matter is mainly handled by idiomorph, which is the library that datastar uses to integrate DOM updates from the server into the live DOM.
 
@@ -118,80 +118,14 @@ Something to be aware of with `merge-fragments!`: this won't reorder elements in
 
 Once I got things set up correctly I found that while Datastar is merging the fragments correctly, apparently DOM element animations are reset when removed and reinserted, which is necessary(?) to reorder elements. So in this example, when an element moves from the beginning of the list to the end its animation is reset. I bet you could work around that by using CSS positioning instead. Anyway, my apps don't often have grids of rotating images, so this works well enough for me.
 
-## Can I Do Drag and Drop?
+Open question: What role do element IDs play in performance here? If I'm reloading the whole `#pictures` element, do the IDs on the `img` elements affect anything?
 
-Just make two lists and allow dragging elements between them. The list an element belongs to should be persistent.
-
-Then turn it into a tree editor by making element labels editable and allowing users to drag elements into other elements.
-
-TODO
-
-## Can I Use Material UI, or other existing component libraries?
-
-Material UI makes it easy to build nice-looking UIs with React. Can I use it by compiling to Web Components?
-
-Answer:
-Not Material UI, but there are other options. These look good:
-- https://learn.microsoft.com/en-us/fluent-ui/web-components/
-- https://shoelace.style/
-- https://ionicframework.com/docs
-- https://github.com/Tradeshift/elements
-
-Also, you can use Lit to build your own web components:
-- https://lit.dev/docs/
-
-Or use svelte: https://svelte.dev/docs/svelte/custom-elements
-
-TODO: more complete analysis of different web component creation options.
-
-
-## Can I do rich text editing?
-
-I assume the way to do this is to create a Web Component which wraps ProseMirror.
-
-I could presumably write a Svelte component that wraps ProseMirror (or uses TipTap) and compile that as a web component.
-
-TinyMCE looks good: https://www.tiny.cloud/solutions/wysiwyg-web-components-rich-text-editor/
-
-but, no, that requires an API key.
-
-Some other stuff to read:
-- https://letsken.com/michael/how-to-implement-a-web-based-rich-text-editor-in-2023
-- https://prosemirror.net/
-
-TODO: implement a rich text editing app
-
-## Show me drop-down menus, popovers, and modal dialogs
-
-Shoelace supports all of these.
-
-## How to handle undo/redo?
-
-The undo/redo state per user should be backend state. Whenever we submit a change, we update that store. We allow clients to send undo and redo requests up to the server. We can basically make undo/redo not a client concern at all.
-
-If we do targeted DOM updates, we'll send down an #undo-redo-area element on all mutations. If we don't, the whole dom will just include the undo-redo buttons when those options are available.
-
-TODO: implement an app w/ undo+redo.
-
-## What about notifications and notification history?
-
-Like "save failed" and "save succeeded". These could be included in the response to mutations, but then we'd need to retain notification history on the backend which is sort of annoying since these really only matter for one session.
-
-It seems like we might want a separate DOM tree for the notifications.
-
-Or we _could_ just retain notifications in the backend storage and just expire them after some amount of time. Probably that.
-
-## Charts
-
-What's the best way to do charts? In the SPA world I'd use one of the many existing charting libraries.
-
-See:
-- https://geneshki.com/how-i-made-chart-js-sane-by-wrapping-it-in-a-web-component/
-- https://www.chartjs.org/docs/latest/charts/area.html
 
 ## Optimistic Update
 
 The creator of Datastar seems to have ethical concerns about optimistic update. I do not share those concerns. When my user makes a change, I want to show them the result of that change immediately, even if it means briefly showing them a state that doesn't match the server's state.
+
+My demo for this is at `hello.optimistic-update`.
 
 I set up a single checkbox that toggles a backend atom between true and false. The first issue I hit is that datastar's data-attr plugin complains if the attribute has no value, but HTML wants unchecked checkboxes to exclude the "checked" attribute entirely.
 
@@ -212,7 +146,7 @@ So I tried this:
          :id "rsvp-input"}]
 ```
 
-and that does correctly update the "checked" attribute of the checkbox. BUT! the DOM doesn't automatically check the box when "checked" attribute is added. I'm not sure I understand what's going on here because I do so a brief period where the checkbox is checked before the merge-fragment event comes down from the server, so I'm not sure why it's getting unchecked.
+and that does correctly update the "checked" attribute of the checkbox. BUT! the DOM doesn't automatically check the box when "checked" attribute is added. I'm not sure I understand what's going on here because I do see a brief period where the checkbox is checked before the merge-fragment event comes down from the server, so I'm not sure why it's getting unchecked.
 
 Anyway, it seems like signals are the better way to deal with this.
 
@@ -230,28 +164,10 @@ Regarding the purpose of this experiment, optimistic update, we basically get th
 
 If the `rsvp*` atom toggle fails (like if you comment out that line of code) then the input will return to its previous state when the response comes back.
 
-## Hyperlith
-
-[Hyperlith](https://github.com/andersmurphy/hyperlith) is a framework/bunch of utilities for making Datastar apps made by an early Datastar adopter, Anders Murphy. It does a lot of things that you should consider doing in your app. It probably makes sense to copy the code into your app and adjust as needed, rather than relying on Hyperlith directly, simply because it doesn't appear that Anders wants Hyperlith to need to be stable right now.
-
-Stuff in Hyperlith:
-- Brotli compression
-- caching/memoization
-- url and form encoding/decoding
-- datastar SSE event formatting
-- http response header utilities
+This experiment further suggests that signals will proliferate in a real app.
 
 
-## Error Handling
-
-If a request fails at the server or there's a network timeout, inform the user.
-
-## Form UI
-
-### Lots of forms on one page
-
-
-## Big Test App
+## Bigger Test App
 
 Make a single app that tests:
 - [x] dnd
@@ -261,6 +177,9 @@ Make a single app that tests:
 - [ ] notifications
 - [ ] error handling
 
+This is located at `hello.cannibal-kitchen`. It's not done.
+
+My thoughts while implementing this:
 
 Interpolating stuff into JS expression does kind of suck. For example:
 
@@ -270,7 +189,6 @@ Interpolating stuff into JS expression does kind of suck. For example:
 
 See the bug? The id isn't quoted in the resultant js.
 
-Implementing drag and drop using the HTML5 api sucks too - it's just a bad API. A real app should use a JS lib for this. Maybe wrapped in web components?
 
 Here's another interpolation challenge:
 
@@ -286,19 +204,67 @@ So we need:
 {:data-class "{droppable: $dragging.type === 'employee'}"}
 ```
 
-It's sort of painful to write code in a language as nice as Clojure but then have to write code in strings for all the datastar stuff.
+It's sort of painful to write code in a language as nice as Clojure but then have to write code in strings for all the Datastar stuff.
 
 Signals are global. That creates challenges when, for example, I want some part of the UI to have some state for toggling a class. Now I have to make sure no other part of the UI chooses the same name. Namespaces help a little bit with that, but it would be nicer to be able to know that a signal is confined to a limited scope. It seems the current Datastar userbase isn't concerned about this at all, and there's no coherent story yet for how you'd manage a big complicated UI.
 
-
-My concerns are no longer about doing rich text editing, undo/redo, or notifications. Rich text can be done with Prosemirror. Undo and redo can be managed server-side and will be better than client-side managed undo/redo. Notifications can also be managed server-side and will be better than client-side managed notifications.
-
-I'm mostly concerned that implementing a truly complicated web page will require a huge number of signals. The advice I'm getting in the Datastar discord is to use only a handful of signals per page, but the examples all seem to contradict this advice, frequently using one signal per field. Imagine something like Tableau - a single page could easily have several hundred interactive things. I'm not convinced Datastar's global signal approach will work well in that situation.
-
 # Q/A
+## Can I Use Material UI, or other existing component libraries?
+
+Material UI makes it easy to build nice-looking UIs with React. Can I use it by compiling to Web Components?
+
+No. But there are good libraries of web components. My favorite that I found is [shoelace](https://shoelace.style/).
+
+
+Also, you can use [Lit](https://lit.dev/docs/) to build your own web components. Or just write them by hand. Lit really just makes it a bit more convenient. The web component authoring process really isn't that different from Svelte or React.
+
+You can also define web components with [Svelte](https://svelte.dev/docs/svelte/custom-elements).
+
+## Can I do rich text editing?
+
+Yeah. It looks like the best way to do that is to use Prosemirror, perhaps wrapped in a web component. See:
+- https://prosemirror.net/
+- https://mishareyzlin.com/notes/prose-mirror-web-component-part-1
+
+
+
+## Can I Do Drag and Drop?
+
+Yes. This is in the bigger demo I did, in the namespace `hello.cannibal-kitchen`.
+
+I found that all the app features business users expect like drag and drop, rich text, and customized inputs are doable with web components or just modern HTML shit, and this really has little to do with Datastar.
+
+
+## How to handle undo/redo?
+
+The undo/redo state per user should be backend state. Whenever we submit a change, we update that store. We allow clients to send undo and redo requests up to the server. We can basically make undo/redo not a client concern at all.
+
+If we do targeted DOM updates, we'll send down an #undo-redo-area element on all mutations. If we don't, the whole dom will just include the undo-redo buttons when those options are available.
+
+
+## What about notifications and notification history?
+
+Like "save failed" and "save succeeded". These could be included in the response to mutations, but then we'd need to retain notification history on the backend which is sort of annoying since these really only matter for one session.
+
+It seems like we might want a separate DOM tree for the notifications.
+
+Or we _could_ just retain notifications in the backend storage and just expire them after some amount of time. Probably that.
 
 ## Can I use squint to generate the javascript?
+
+[Squint](https://github.com/squint-cljs/squint) is like ClojureScript but uses JavaScript's data structures. It might be nice to use this to produce the Datastar expressions we put in attributes like `data-on-click`.
+
 Squint has a runtime - I would want something that only does the syntax translation. There appear to be some options, none very active.
+
+Perhaps a Datastar+Clojure -specific tool could provide a nicer syntax for common stuff.
+
+## Charts
+
+What's the best way to do charts? In the SPA world I'd use one of the many existing charting libraries. Maybe using d3 directly is the best choice. This question has very little to do with Datastar.
+
+See:
+- https://geneshki.com/how-i-made-chart-js-sane-by-wrapping-it-in-a-web-component/
+- https://www.chartjs.org/docs/latest/charts/area.html
 
 ## What's the deal with server-sent events?
 
@@ -321,7 +287,25 @@ Also see [this serverfault post](https://serverfault.com/questions/1158832/nginx
 
 ## When and how should I use javascript in my datastar apps?
 
-The "how" part is easy - just the load script w/ a script tag. "When" is trickier. We need js for defining web components. Any js that deals with client-side state is probably a mistake.
+The "how" part is easy - just the load script w/ a script tag. "When" is trickier. We need js for defining web components. Any js that deals with client-side state is probably a mistake. Maybe it is sometimes useful to have additional library code?
+
+## Hyperlith?
+
+[Hyperlith](https://github.com/andersmurphy/hyperlith) is a framework/bunch of utilities for making Datastar apps made by an early Datastar adopter, Anders Murphy. It does a lot of things that you should consider doing in your app. It probably makes sense to copy the code into your app and adjust as needed, rather than relying on Hyperlith directly, simply because it doesn't appear that Anders wants Hyperlith to need to be stable right now.
+
+Interesting stuff in Hyperlith:
+- Brotli compression
+- caching/memoization
+- url and form encoding/decoding
+- datastar SSE event formatting
+- http response header utilities
+
+## Error Handling How?
+
+If a request fails at the server or there's a network timeout, we should inform the user.
+
+It appears Datastar's creator doesn't agree with that? But it appears he eventually agreed to support error handlers for Datastar's http plugins. So that's how you'd do http request error handling, which is probably the only kind of error a Datastar app really needs to deal with since there should be very little client-side state.
+
 
 ## How do I use Brotli compression?
 
@@ -336,15 +320,22 @@ I can use it in nginx or directly from the jvm process. IDK what the tradeoffs a
 Don't use datastar if:
 
 - clients must be able to use the app offline
+- (and this is where the Datastar people will probably disagree) your app UI has a large variety and number of interactive elements. Because that will lead to a proliferation of signals which would quickly become a mess.
 
-# The Datastar Way
+## What is the Datastar Way?
 
 - Use few signals
 - As little client-side state as possible. If you can go to the server to read/write some state, do so.
+- Use existing web standards to do things declaratively instead of using javascript.
 
-# Other Thoughts
+# Final Thoughts
 
-There are lots of modern HTML and CSS features that replace stuff found in SPA frameworks. Learn about them and use them:
+My concerns are no longer about doing rich text editing, undo/redo, or notifications. Rich text can be done with Prosemirror. Undo and redo can be managed server-side and will be better than client-side managed undo/redo. Notifications can also be managed server-side and will be better than client-side managed notifications.
+
+I'm mostly concerned that implementing a truly complicated web page will require a huge number of signals. The advice I'm getting in the Datastar discord is to use only a handful of signals per page, but the examples all seem to contradict this advice, frequently using one signal per field. Imagine something like Tableau - a single page could easily have several hundred interactive things. I'm not convinced Datastar's global signal approach will work well in that situation.
+
+
+I haven't paid enough attention to built-in HTML/DOM/JS stuff in recent years. There are lots of modern HTML and CSS features that replace stuff found in SPA frameworks. Learn about them and use them:
 
 - CSS variables
 - Speculation Rules (preload linked pages): https://www.debugbear.com/blog/speculation-rules#an-introduction-to-speculation-rules
