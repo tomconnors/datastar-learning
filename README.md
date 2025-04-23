@@ -8,6 +8,8 @@ I mainly build business CRUD apps, so I'm less interested in super-fast renders 
 
 The remaining sections of this document will describe the experiments I'm doing to test out Datastar, answer some questions I had, and share my general thoughts on this thing. I used Clojure for my backend, but Datastar has lots of backend SDKs, which mainly just handle sending the server-sent events Datastar's backend action plugins expect.
 
+tl;dr It works. I'm concerned that signals would proliferate and turn into a mess in a page with a lot of interactive elements.
+
 # Examples
 
 Each Clojure namespace under ./examples/ is an independent example. I tried to keep them all self-contained (except for library code) to make the examples easier to quickly read through.
