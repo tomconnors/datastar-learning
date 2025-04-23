@@ -210,7 +210,30 @@ It's sort of painful to write code in a language as nice as Clojure but then hav
 
 Signals are global. That creates challenges when, for example, I want some part of the UI to have some state for toggling a class. Now I have to make sure no other part of the UI chooses the same name. Namespaces help a little bit with that, but it would be nicer to be able to know that a signal is confined to a limited scope. It seems the current Datastar userbase isn't concerned about this at all, and there's no coherent story yet for how you'd manage a big complicated UI.
 
+
 # Q/A
+## Security?
+### Script Injection
+
+It occurs to me that the above examples are vulnerable to script injection because I'm concatenating strings with user-provided inputs into code.
+
+A quick fix is to do something like:
+
+```clojure
+[:div {:data-signals (d*-expr "{foo: #bar}" {:#bar "some user-provided value"})}]
+```
+
+where `d*-expr` properly escapes the variables, perhaps just by writing the values to JSON.
+
+An even better option would be a clojure-to-js templating DSL that allows using Clojure's syntax with javascript's semantics. Clojurescript and Squint are too much for this use case. I'm not sure exactly what this would look like. It would be a bit like HoneySQL in that we'd be safely mixing code and data, but I'd prefer to use a listy syntax. That gets a bit complicated though:
+
+```clojure
+;; We need something like quote/unquote to allow reaching out of the template.
+`(= $signal ~(get-user-provided-input)) ;; => "$signal = \"the user's input\""
+```
+
+
+
 ## Can I Use Material UI, or other existing component libraries?
 
 Material UI makes it easy to build nice-looking UIs with React. Can I use it by compiling to Web Components?
