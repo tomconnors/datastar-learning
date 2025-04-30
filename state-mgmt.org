@@ -1,0 +1,44 @@
+I'm trying to come up with some prescriptive guidance for myself for dealing with page-view-specific data in my app. That is, state that would live in the user's browser in a SPA. This is for an app that does a hyperlith-style render loop. Would appreciate any criticism of this:
+
+The state management strategies for page-view-specific data, roughly in order of longevity, are:
+  - let the browser handler it
+    - good for <details> and <dialog> elements or elements w/ a "popover" attribute.
+  - web components with internal state
+    - good for more sophisticated tooltips, dialogs, other UI widgets
+  - client-only signals
+    - good for ephemeral state not easily handled by the above two options.
+  - client+server signals
+    - good for user inputs in forms?
+    - note that once a signal is created it exists for the rest of the page view or until it is removed with datastar-remove-signals. That means that if the UI changes to a different form, your requests will still include all the signals from the previous form unless you explicitly remove them, which might be onerous.
+  - URL query string (and server memory)
+    - good for things that should survive reload
+      - the currently selected element
+      - visibility of optional elements such as a chatbox
+    - must also be in server memory so the render loop has access to this state.
+    - requires that tabs have unique IDs (because of storing in server memory)
+  - data-persist__session
+    - Could be used for things that should survive reload. Probably in combination w/ client-only signals.
+  - A database (and, optionally, server memory, as a cache)
+    - best option for compound data such as an undo/redo stack
+      - could potentially JSON.stringify compound data and put it in a signal or the query string instead.
+    - probably requires a recurring cleanup process or a Redis-style EXPIRE command
+    - requires that tabs have unique IDs
+
+When I say "server memory" above, I'm basically just talking about an atom. When new connections open or close, we update that atom. However, everything in that atom needs to also be somewhere else. Consider the case of a user who does some work, building up an undo stack, loses internet access for 5 hours, then returns to work. If they haven't reloaded the page, their undo stack should still be available. If we removed their session info from the atom on disconnect or in some scheduled cleanup process, their undo stack will be gone from server memory. Consider also that a brief network disruption will cause the SSE connection to close.
+
+In a single-page app, we'd store the user's undo stack as a client-side javascript object, so a user could theoretically return many days later and still have the undo stack available. Without client-side state we basically have to accept some maximum amount of time state like this can be preserved /or/ we have to accept that our "sessions" database grows continuously and is mostly filled with useless data.
+
+How do we deal with the pathological cases?
+- The SSE connection request includes a "tabId" signal that the server does not recognize. It's probably an expired session. In this case, we just create a new session with that ID and send down the HTML for this new session, blowing away any DOM the client has related to the expired session.
+- The SSE connection request includes a "tabId" signal associated with a different user account. Send a 400-level error, and probably log something because that's a surprising thing to happen.
+
+A side note, the backend should store a mapping between tab ID and user ID so we can reject requests where the two don't match. This protects access to undo stacks and anything else potentially sensitive in the sessions database.
+
+Under this model, setting a selected element would consist of:
+- send a request to the server to update the in-memory session storage
+- the response uses datastar-execute-script to update the query string
+
+Updating the undo stack:
+- send a request to do whatever undoable thing it is we're doing
+- backend updates undo stack in the session DB
+- next render makes the undo button enabled
