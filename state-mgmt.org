@@ -32,7 +32,7 @@ How do we deal with the pathological cases?
 - The SSE connection request includes a "tabId" signal that the server does not recognize. It's probably an expired session. In this case, we just create a new session with that ID and send down the HTML for this new session, blowing away any DOM the client has related to the expired session.
 - The SSE connection request includes a "tabId" signal associated with a different user account. Send a 400-level error, and probably log something because that's a surprising thing to happen.
 
-A side note, the backend should store a mapping between tab ID and user ID so we can reject requests where the two don't match. This protects access to undo stacks and anything else potentially sensitive in the sessions database.
+A side note, the backend should store a mapping between tab ID and user ID so we can reject requests where the two don't match. Or you could encode that in the tab ID and encrypt it. This protects access to undo stacks and anything else potentially sensitive in the sessions database.
 
 Under this model, setting a selected element would consist of:
 - send a request to the server to update the in-memory session storage
