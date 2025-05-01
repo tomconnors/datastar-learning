@@ -10,11 +10,11 @@ I see some downsides with each of these approaches.
 
 ** signals-based
 
-With this approach, /every/ signal (optionally including client-only signals) is sent to the backend. But any particular write operation probably only cares about a subset of those signals. Furthermore, in order to send whatever data with this approach, we either need to create signals containing that data (despite the prevailing wisdom being that we should minimize the number of signals), or encode that data in the query string (which can make for some gnarly javascript to embed in our "data-on-whatever" attributes).
+With this approach, /every/ signal (optionally including client-only signals) is sent to the backend. But any particular write operation probably only cares about a subset of those signals. Furthermore, in order to send whatever data with this approach, we either need to create signals containing that data (despite the prevailing wisdom being that we should minimize the number of signals), or encode that data in the URL (which can make for some gnarly javascript to embed in our "data-on-whatever" attributes).
 
 ** forms-based
 
-With this approach, in order to do fine-grained updates, we basically need to wrap every input (<input>, <select>, <textarea>, etc) in a <form>. If we want to include any other data other than what's in named inputs in our <form>, we need to use the query string. Note that we can include signals in these requests by putting them in hidden form fields.
+With this approach, in order to do fine-grained updates, we basically need to wrap every input (<input>, <select>, <textarea>, etc) in a <form>. If we want to include any other data other than what's in named inputs in our <form>, we need to use the URL. Note that we can include signals in these requests by putting them in hidden form fields.
 
 * Alternatives
 
