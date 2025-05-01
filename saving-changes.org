@@ -182,6 +182,10 @@ If we then navigate to Cartman and update his most heinous act, our request body
 
 Even though we're no longer concerned with Stan, that data is still in the request, because those signals are still live. We could have avoided this by removing those signals when navigating to Cartman, but that means adding code to our server to deal with that. I think the logical endpoint of that path is removing ALL signals on every UI change and relying on the data-signals attributes in the new HTML to recreate whatever's needed.
 
+* What I'm Doing
+
+Because of the downsides with the signals-based approach, I expect to avoid it and use the forms-based approach, even though it requires wrapping every input in a form.
+
 * Other Notes
 
-The docs say "all requests are sent with a ~{datastar: *}~ object containing the current signals", but that is only true for GETs. For other request methods, the signals object is the entire body of the request. i.e. if there's one signal called "sessionId", the request body with be ~{"sessionId": "whatever"}~.
+The docs say "all requests are sent with a ~{datastar: *}~ object containing the current signals", but that is only true for GETs. For other request methods, the signals object is the entire body of the request. i.e. if there's one signal called "sessionId", the request body will be ~{"sessionId": "whatever"}~.
