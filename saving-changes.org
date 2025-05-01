@@ -1,0 +1,187 @@
+* Saving User Inputs
+
+In addition to what we can do with regular old HTML, Datastar offers 2 ways to save user inputs to our server, using any of the built-in http request action plugins. Except you probably wouldn't use ~@get~ for this. Those options are:
+
+- Send an "application/json" content-type request where the content is an object containing the current signals. This is the "signals-based" approach.
+- Send a "multipart/form-data" content-type request (or "application/x-www-form-urlencoded" for GET) where the form data is the named inputs from some form on the page. This is the "forms-based" approach.
+
+
+I see some downsides with each of these approaches.
+
+** signals-based
+
+With this approach, /every/ signal (optionally including client-only signals) is sent to the backend. But any particular write operation probably only cares about a subset of those signals. Furthermore, in order to send whatever data with this approach, we either need to create signals containing that data (despite the prevailing wisdom being that we should minimize the number of signals), or encode that data in the query string (which can make for some gnarly javascript to embed in our "data-on-whatever" attributes).
+
+** forms-based
+
+With this approach, in order to do fine-grained updates, we basically need to wrap every input (<input>, <select>, <textarea>, etc) in a <form>. If we want to include any other data other than what's in named inputs in our <form>, we need to use the query string. Note that we can include signals in these requests by putting them in hidden form fields.
+
+* Alternatives
+
+The signals-based approach could be made more flexible by allowing the caller to provide the request body, probably as a "body" or "data" option which expects to a receive an object on which it'll call ~JSON.stringify~
+
+If there's any legitimacy to my concern about sending all the signals for every signals-based request, it's worth also considering  providing a "signals" option that is a Datomic pull/EQL/Graphql-style selection spec:
+   #+begin_src javascript
+     // would get {"foo": {"bar": {"baz": whatever, "qux": whatever}}}
+     {signals: ["foo" {"bar": ["baz" "qux"]}]}
+   #+end_src
+
+
+* Motivating Example
+
+Consider a 2-column page that lists objects in the left panel and shows options for the currently selected object in the right panel. There are different types of objects. Let's say "friends" and "enemies".
+
+#+begin_src artist
+  +-----------------------------------------+-------------------------------------------------+
+  |  Friends                                |                                 	       	    |
+  +-----------------------------------------+                                 	       	    |
+  |	                                  |  	     	                    	       	    |
+  |   Stan                                  |                                 	       	    |
+  |   Kenny			          |  	     	                    	       	    |
+  |   	 			          |  	     	                    	       	    |
+  |   	 			          |  	     	                    	       	    |
+  |                                         |                                 	       	    |
+  |   	 			          |  	     	  	            	       	    |
+  |   	 			          |  	     	  	            	       	    |
+  |   	 			          |  	     	  	            	       	    |
+  |   	 			          |  	     	  	            	       	    |
+  |   	 			          |  	     	  	            	       	    |
+  |                                         |               	            	       	    |
+  |   	 			          |  	     		            	       	    |
+  |   	 			          |  	     		            	       	    |
+  +-----------------------------------------+  	     		            	       	    |
+  |  Enemies                                |          		            	       	    |
+  +-----------------------------------------+  	    		            	       	    |
+  |                                         |         		            	       	    |
+  |   Cartman	 		          |  	    		            	       	    |
+  |                                         |         		            	       	    |
+  |		 		          |  	   		            	       	    |
+  |		 		          |  	   		            	       	    |
+  |                                         |  	   		            	       	    |
+  |		 		          | 	   		            	       	    |
+  |                                         |                                 	       	    |
+  |                                         |                                 	       	    |
+  |                                         |        		            	       	    |
+  |                                         |                                 	       	    |
+  |                                         |                                 	       	    |
+  |                                         |                                                 |
+  |                                         |                                                 |
+  |		 			  | 			            	       	    |
+  +-----------------------------------------+-------------------------------------------------+
+
+#+end_src
+
+If we click a friend or an enemy, we see the UI to edit that type of object in the right panel:
+
+#+begin_src artist
+  +-----------------------------------------+-------------------------------------------------+
+  |  Friends                                |                                 	       	    |
+  +-----------------------------------------+                                 	       	    |
+  |	                                  |   Stan (friend)                 	       	    |
+  |   Stan                                  |         +--------------------------------+ 	    |
+  |   Kenny			          |   Name: |                        	     | 	    |
+  |   	 			          |  	    +--------------------------------+ 	    |
+  |   	 			          |  	                            	       	    |
+  |                                         |                         +----------------+ 	    |
+  |   	 			          |   Years of Friendship:  |        	     | 	    |
+  |   	 			          |  	     	  	    +----------------+ 	    |
+  |   	 			          |  	     	  	            	       	    |
+  |   	 			          |  	     	  	            	       	    |
+  |   	 			          |  	     	  	            	       	    |
+  |                                         |               	            	       	    |
+  |   	 			          |  	     		            	       	    |
+  |      	 			          |  	     		            	       	    |
+  +-----------------------------------------+  	     		            	       	    |
+  |  Enemies                                |          		            	       	    |
+  +-----------------------------------------+  	    		            	       	    |
+  |                                         |         		            	       	    |
+  |   Cartman	 		          |  	    		            	       	    |
+  |                                         |         		            	       	    |
+  |      		 		          |  	   		            	       	    |
+  |      		 		          |  	   		            	       	    |
+  |                                         |  	   		            	       	    |
+  |      		 		          | 	   		            	       	    |
+  |                                         |                                 	       	    |
+  |                                         |                                 	       	    |
+  |                                         |        		            	       	    |
+  |                                         |                                 	       	    |
+  |                                         |                                 	       	    |
+  |                                         |                                                 |
+  |                                         |                                                 |
+  |		 			  | 			            	       	    |
+  +-----------------------------------------+-------------------------------------------------+
+
+
+
+#+end_src
+
+
+#+begin_src artist
+  +-----------------------------------------+-------------------------------------------------+
+  |  Friends                                |                                 	       	    |
+  +-----------------------------------------+                                 	       	    |
+  |	                                  |   Cartman (enemy)               	       	    |
+  |   Stan                                  |         +--------------------------------+ 	    |
+  |   Kenny			          |   Name: |                        	     | 	    |
+  |   	 			          |  	    +--------------------------------+ 	    |
+  |   	 			          |  	                            	       	    |
+  |                                         |                     +--------------------+      |
+  |   	 			          |   Most Heinous Act:	|                    |      |
+  |   	 			          |  	     	  	+--------------------+      |
+  |   	 			          |  	     	  	            	       	    |
+  |   	 			          |  	     	  	            	       	    |
+  |   	 			          |  	     	  	            	       	    |
+  |                                         |               	            	       	    |
+  |   	 			          |  	     		            	       	    |
+  |      	 			          |  	     		            	       	    |
+  +-----------------------------------------+  	     		            	       	    |
+  |  Enemies                                |          		            	       	    |
+  +-----------------------------------------+  	    		            	       	    |
+  |                                         |         		            	       	    |
+  |   Cartman	 		          |  	    		            	       	    |
+  |                                         |         		            	       	    |
+  |      		 		          |  	   		            	       	    |
+  |      		 		          |  	   		            	       	    |
+  |                                         |  	   		            	       	    |
+  |      		 		          | 	   		            	       	    |
+  |                                         |                                 	       	    |
+  |                                         |                                 	       	    |
+  |                                         |        		            	       	    |
+  |                                         |                                 	       	    |
+  |                                         |                                 	       	    |
+  |                                         |                                                 |
+  |                                         |                                                 |
+  |		 			  | 			            	       	    |
+  +-----------------------------------------+-------------------------------------------------+
+
+
+
+#+end_src
+
+If we use a signals-based approach, when we edit Stan's "years of friendship", our request body will look like:
+
+#+begin_src javascript
+  {
+    friendId: "stanId",
+    yearsOfFriendship: 10
+  }
+#+end_src
+
+Note that we're presuming that the name of the operation/command we want to do is encoded in the URL, which is easy to do because that is static, unlike user inputs.
+
+If we then navigate to Cartman and update his most heinous act, our request body will look like this:
+
+#+begin_src javascript
+  {
+    friendId: "stanId",
+    yearsOfFriendship: 10,
+    enemyId: "cartmanId",
+    mostHeinousAct: "the scott tenorman incident"
+  }
+#+end_src
+
+Even though we're no longer concerned with Stan, that data is still in the request, because those signals are still live. We could have avoided this by removing those signals when navigating to Cartman, but that means adding code to our server to deal with that. I think the logical endpoint of that path is removing ALL signals on every UI change and relying on the data-signals attributes in the new HTML to recreate whatever's needed.
+
+* Other Notes
+
+The docs say "all requests are sent with a ~{datastar: *}~ object containing the current signals", but that is only true for GETs. For other request methods, the signals object is the entire body of the request. i.e. if there's one signal called "sessionId", the request body with be ~{"sessionId": "whatever"}~.
