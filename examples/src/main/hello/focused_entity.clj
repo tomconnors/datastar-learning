@@ -1,5 +1,6 @@
 (ns hello.focused-entity
   (:require [clojure.pprint :as pprint]
+            [clojure.string :as string]
             [hyperlith.core :as h]))
 
 (defn render-home [{:keys [db sid first-render] :as _req}]
@@ -15,7 +16,7 @@
             (map
              (fn [attr]
                [:label {:style {:display "block"}}
-                "Name:"
+                (-> attr name string/capitalize) ":"
                 [:input {:value (get person attr)
                          :type "text"
                          :data-entity-id (:id person)
