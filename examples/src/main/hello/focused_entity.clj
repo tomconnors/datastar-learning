@@ -3,7 +3,7 @@
             [clojure.string :as string]
             [hyperlith.core :as h]))
 
-(defn render-home [{:keys [db sid first-render] :as _req}]
+(defn render-home [{:keys [db] :as _req}]
   (let [snapshot @db
         people (:people snapshot)]
     (h/html
@@ -11,7 +11,7 @@
        [:div#people
         (map
          (fn [[id person]]
-           [:div {:id (str "person-" (:id person))}
+           [:div {:id (str "person-" id)}
             [:h2 "Person " (:id person)]
             (map
              (fn [attr]
@@ -19,9 +19,11 @@
                 (-> attr name string/capitalize) ":"
                 [:input {:value (get person attr)
                          :type "text"
+                         ;; These are not d* plugins:
                          :data-initial-value (get person attr)
-                         :data-entity-id (:id person)
+                         :data-entity-id id
                          :data-attribute-name attr
+                         ;; These are:
                          :data-on-focus (str "$focused.id = evt.target.dataset.entityId;"
                                              "$focused.attr = evt.target.dataset.attributeName;")
                          :data-on-blur (str "$focused.value = evt.target.value;"
