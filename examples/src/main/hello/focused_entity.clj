@@ -19,11 +19,13 @@
                 (-> attr name string/capitalize) ":"
                 [:input {:value (get person attr)
                          :type "text"
+                         :data-initial-value (get person attr)
                          :data-entity-id (:id person)
                          :data-attribute-name attr
-                         :data-on-click (str "$focused.id = evt.target.dataset.entityId;"
+                         :data-on-focus (str "$focused.id = evt.target.dataset.entityId;"
                                              "$focused.attr = evt.target.dataset.attributeName;")
-                         :data-on-blur "$focused.value = evt.target.value; @post('update');"}]])
+                         :data-on-blur (str "$focused.value = evt.target.value;"
+                                            "$focused.value !== evt.target.dataset.initialValue && @post('update');")}]])
              [:name :hobby])])
          people)]])))
 
