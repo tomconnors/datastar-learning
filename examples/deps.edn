@@ -26,6 +26,9 @@
         ;; fast json:
         com.cnuernber/charred        {:mvn/version "1.037"}
 
+        andersmurphy/hyperlith {:git/url "https://github.com/andersmurphy/hyperlith"
+                                :git/sha "6e8341ad44a62907090c1e2953bb20da2b20da68"}
+
         ;; I added some other stuff:
 
         mount {:mvn/version "0.1.16"}
