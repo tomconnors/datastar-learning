@@ -7,7 +7,7 @@
   (let [snapshot @db
         people (:people snapshot)]
     (h/html
-      [:main#morph.main {:data-signals "{focused: {id: null, attr: null, value: null}}"}
+      [:main#morph.main {:data-signals__ifmissing "{focused: {id: null, attr: null, value: null}}"}
        [:div#people
         (map
          (fn [[id person]]
